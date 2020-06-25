@@ -70,6 +70,9 @@ def uniqueColoring(solutions, attack, tnodes, G, write_file):
     for solution in solutions:
         for atck in attack:
             color = coloring(solution, atck, tnodes, G)
+            print(solution)
+            print(atck)
+            print(color)
             totalSum, defSum = uniqueness(color)  
             gameMatrix[str(ind) + "_" + str(atck)] = (defSum, totalSum - defSum)
         ind += 1
@@ -106,6 +109,7 @@ def model():
 
     dcs = DCS(num_nodes, num_transformers, G)
     solutions = dcs.get_differntially_immune_solutions()
+    print(solutions)
     attack = []
     for soln in solutions:
         for i in soln:
