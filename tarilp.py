@@ -10,14 +10,22 @@ import time
 from itertools import combinations
 import pandas as pd
 import numpy as np
+import collections
 
 # To read edge-lists stored as txt files
 def genGraph():
     G = nx.Graph()
-    G = nx.read_edgelist("Graphs/14bus data/14_bus_Graph(k=2).txt", nodetype = int)
+    G = nx.read_edgelist("Graphs/14_bus_Graph(k=2).txt", nodetype = int)
     return G
 
-
+def readNodeWeights():
+    f = open("Graphs/14_bus_node_weights.txt")
+    nodeWeights = dict()
+    for line in f:
+        x = line.replace('\n', '').split(' ')
+        nodeWeights[int(x[0])] = int(x[1])
+    return nodeWeights
+        
 # This function computes the optimal MDCS for the input graph
 def model():
     # Inputs the total number of nodes in the graph
@@ -98,6 +106,13 @@ def model():
             break
         print(len(solution))
     
+    attack = []
+    for soln in solution:
+        for i in soln:
+            attack.append(i)
+            
+    uniqueColoring(solution, attack, tnodes, G)
+    exit()
     #for k, v in problem.constraints.items():
         #print(k, v)
     print("Solutions: ", solution)
@@ -111,9 +126,67 @@ def model():
     print("Time taken = {} seconds".format(time.time() - start))
     print("-------------------------------------------------------")
     #print(G.number_of_edges())
+    
 
+def coloring(solution, attack, tnodes, G):
+    color = ['0' for i in range(len(tnodes))]
+    
+    for i in solution:
+        if i == attack:
+            continue
+        else:
+            neighbor = list(G.neighbors(i))
+            for node in neighbor:
+                color[node - 1] = color[node - 1] + '+' + str(i)
+    return color
+
+    
+def uniqueness(color):
+    
+    nodeWeights = readNodeWeights()
+    defSum = 0
+    totalSum = 0
+    
+    unique = []
+    
+    for _, v in nodeWeights.items():
+        totalSum += v
+    
+    if len(color) == len(set(color)) and '0' not in color:
+        for _, v in nodeWeights.items():
+            defSum += v
+        
+        return totalSum, defSum
+    
+    else:
+        counter = collections.Counter(color)
+        for k, v in counter.items():
+            if v == 1 and k != '0':
+                unique.append(k)
+        for i in unique:
+            ind = color.index(i)
+            defSum += nodeWeights[ind + 1]
+        
+        return totalSum, defSum
+    
+def uniqueColoring(solutions, attack, tnodes, G):
+    
+    gameMatrix = dict()
+      
+    ind = 1
+    for solution in solutions:
+        for atck in attack:
+            color = coloring(solution, atck, tnodes, G)
+            print(solution)
+            print(atck)
+            print(color)
+            totalSum, defSum = uniqueness(color)  
+            gameMatrix[str(ind) + "_" + str(atck)] = (defSum, totalSum - defSum)
+        ind += 1
+    print(gameMatrix)
 
 def main():
     model()
+    #readNodeWeights()
 if __name__ == '__main__':
     main()
