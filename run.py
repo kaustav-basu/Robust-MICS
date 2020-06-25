@@ -97,14 +97,25 @@ def model():
 
     dcs = DCS(num_nodes, num_transformers, G)
     solutions = dcs.get_differentially_immune_solutions()
+    
+    min_length = 999999
+    for solution in solutions:
+        if len(solution) < min_length:
+            min_length = len(solution)
+    
+    min_solutions = []
+    
+    for solution in solutions:
+        if len(solution) == min_length:
+            min_solutions.append(solution)
 
     # All possible nodes where sensors can be deployed can be attacked.
     attacks = set()
-    for solution in solutions:
+    for solution in min_solutions:
         for node in solution:
             attacks.add(node)
 
-    generate_game_matrix(solutions, list(attacks), dcs.t_nodes, G, write_file)
+    generate_game_matrix(min_solutions, list(attacks), dcs.t_nodes, G, write_file)
 
 
 if __name__ == '__main__':
