@@ -13,44 +13,37 @@ def gen_graph(edge_file):
     G = nx.read_edgelist(edge_file, nodetype=int)
     return G
 
+
 def readNodeWeights():
     f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"])
-    nodeWeights = dict()
+    node_weights = dict()
     for line in f:
         x = line.replace('\n', '').split(' ')
-        nodeWeights[int(x[0])] = int(x[1])
-    return nodeWeights
+        node_weights[int(x[0])] = int(x[1])
+    return node_weights
 
-def coloring(solution, attack, tnodes, G):
-    color = ['0' for i in range(len(tnodes))]
-    
+
+def get_color_codes(solution, attack, t_nodes, G):
+    color = ['0' for i in range(len(t_nodes))]
     for i in solution:
-        if i == attack:
-            continue
-        else:
+        if not i == attack:
             neighbor = list(G.neighbors(i))
             for node in neighbor:
                 color[node - 1] = color[node - 1] + '+' + str(i)
     return color
 
-    
-def uniqueness(color):
-    
-    nodeWeights = readNodeWeights()
-    defSum = 0
-    totalSum = 0
-    
+
+def check_uniqueness(color):
+    node_weights = readNodeWeights()
+    total_sum = sum(node_weights.values())
+
+    r_D = 0
     unique = []
-    
-    for _, v in nodeWeights.items():
-        totalSum += v
-    
+    # If all nodes have unique non zero color
     if len(color) == len(set(color)) and '0' not in color:
-        for _, v in nodeWeights.items():
-            defSum += v
-        
-        return totalSum, defSum
-    
+        r_D = total_sum
+
+    # Otherwise
     else:
         counter = collections.Counter(color)
         for k, v in counter.items():
@@ -58,48 +51,43 @@ def uniqueness(color):
                 unique.append(k)
         for i in unique:
             ind = color.index(i)
-            defSum += nodeWeights[ind + 1]
-        
-        return totalSum, defSum
-    
-def uniqueColoring(solutions, attack, tnodes, G, write_file):
-    
-    gameMatrix = dict()
-      
-    ind = 1
-    for solution in solutions:
-        for atck in attack:
-            color = coloring(solution, atck, tnodes, G)
-            print(solution)
-            print(atck)
-            print(color)
-            totalSum, defSum = uniqueness(color)  
-            gameMatrix[str(ind) + "_" + str(atck)] = (defSum, totalSum - defSum)
-        ind += 1
-    print(gameMatrix)
-    
+            r_D += node_weights[ind + 1]
+
+    return total_sum, r_D
+
+
+def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
+    game_matrix = dict()
+
+    index = 1
+    for a_D in def_actions:
+        for a_A in attacks:
+            color_codes = get_color_codes(a_D, a_A, t_nodes, graph)
+            total_sum, r_D = check_uniqueness(color_codes)
+            game_matrix["{}_{}".format(index, a_A)] = (r_D, total_sum - r_D)
+        index += 1
+
     s = ""
-    s += str(len(solutions)) + "\n"
+    s += str(len(def_actions)) + "\n"
     s += str(1) + "\n"
     s += str(1) + "\n"
-    s += str(len(attack)) + "\n"
-    
-    attackString = [str(a) for a in attack]
+    s += str(len(attacks)) + "\n"
+
+    attackString = [str(a) for a in attacks]
     s += "|".join(attackString) + "\n"
-    
-    #for i in range(len(solutions)):
+
     count = 0
-    for k, v in gameMatrix.items():
-        s += str(v[0]) + "," + str(v[1]) + " "
+    for k, v in game_matrix.items():
+        s += "{},{} ".format(v[0], v[1])
         count += 1
-        if count % len(attack) == 0:
+        if count % len(attacks) == 0:
             s += "\n"
-    
+
     with open(write_file, "w") as f:
         f.write(s)
     f.close()
-    
-            
+
+
 def model():
     num_nodes = int(config['GRAPH']['NUM_NODES'])
     num_transformers = int(config['GRAPH']['NUM_TRANSFORMER_NODES'])
@@ -108,15 +96,15 @@ def model():
     G = gen_graph(edge_file)
 
     dcs = DCS(num_nodes, num_transformers, G)
-    solutions = dcs.get_differntially_immune_solutions()
-    print(solutions)
-    attack = []
-    for soln in solutions:
-        for i in soln:
-            attack.append(i)
-            
-    uniqueColoring(solutions, attack, dcs.t_nodes, G, write_file)
+    solutions = dcs.get_differentially_immune_solutions()
 
+    # All possible nodes where sensors can be deployed can be attacked.
+    attacks = set()
+    for solution in solutions:
+        for node in solution:
+            attacks.add(node)
+
+    generate_game_matrix(solutions, list(attacks), dcs.t_nodes, G, write_file)
 
 
 if __name__ == '__main__':
