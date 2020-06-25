@@ -3,9 +3,12 @@ import networkx as nx
 import configparser
 from dcs import DCS
 from pulp import *
+import random
 
 config = configparser.ConfigParser()
-config.read('graph_config.ini')
+config.read("graph_config.ini")
+seed = int(config["GRAPH"]["SEED"])
+random.seed(seed)
 
 
 def gen_graph(edge_file):
@@ -18,18 +21,18 @@ def readNodeWeights():
     f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"])
     node_weights = dict()
     for line in f:
-        x = line.replace('\n', '').split(' ')
+        x = line.replace("\n", "").split(" ")
         node_weights[int(x[0])] = int(x[1])
     return node_weights
 
 
 def get_color_codes(solution, attack, t_nodes, G):
-    color = ['0' for i in range(len(t_nodes))]
+    color = ["0" for i in range(len(t_nodes))]
     for i in solution:
         if not i == attack:
             neighbor = list(G.neighbors(i))
             for node in neighbor:
-                color[node - 1] = color[node - 1] + '+' + str(i)
+                color[node - 1] = color[node - 1] + "+" + str(i)
     return color
 
 
@@ -40,14 +43,14 @@ def check_uniqueness(color):
     r_D = 0
     unique = []
     # If all nodes have unique non zero color
-    if len(color) == len(set(color)) and '0' not in color:
+    if len(color) == len(set(color)) and "0" not in color:
         r_D = total_sum
 
     # Otherwise
     else:
         counter = collections.Counter(color)
         for k, v in counter.items():
-            if v == 1 and k != '0':
+            if v == 1 and k != "0":
                 unique.append(k)
         for i in unique:
             ind = color.index(i)
@@ -66,6 +69,13 @@ def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
             total_sum, r_D = check_uniqueness(color_codes)
             game_matrix["{}_{}".format(index, a_A)] = (r_D, total_sum - r_D)
         index += 1
+
+    for a_A in attacks:
+        r_A = random.randint(0, total_sum)
+        for key in game_matrix.keys():
+            if str(a_A) in key:
+                val = game_matrix[key]
+                game_matrix[key] = (val[0], val[1] - r_A)
 
     s = ""
     s += str(len(def_actions)) + "\n"
@@ -89,22 +99,23 @@ def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
 
 
 def model():
-    num_nodes = int(config['GRAPH']['NUM_NODES'])
-    num_transformers = int(config['GRAPH']['NUM_TRANSFORMER_NODES'])
-    edge_file = config['GRAPH']['EDGE_FILE']
-    write_file = config['GRAPH']['WRITE_FILE']
+    num_nodes = int(config["GRAPH"]["NUM_NODES"])
+    num_transformers = int(config["GRAPH"]["NUM_TRANSFORMER_NODES"])
+    edge_file = config["GRAPH"]["EDGE_FILE"]
+    write_file = config["GRAPH"]["WRITE_FILE"]
+
     G = gen_graph(edge_file)
 
     dcs = DCS(num_nodes, num_transformers, G)
-    solutions = dcs.get_differentially_immune_solutions()
-    
+    solutions = dcs.get_differentially_immune_solutions(verbose=False)
+
     min_length = 999999
     for solution in solutions:
         if len(solution) < min_length:
             min_length = len(solution)
-    
+
     min_solutions = []
-    
+
     for solution in solutions:
         if len(solution) == min_length:
             min_solutions.append(solution)
@@ -118,5 +129,5 @@ def model():
     generate_game_matrix(min_solutions, list(attacks), dcs.t_nodes, G, write_file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model()
