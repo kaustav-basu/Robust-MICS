@@ -17,7 +17,7 @@ def gen_graph(edge_file):
     return G
 
 
-def readNodeWeights():
+def read_node_weights():
     f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"])
     node_weights = dict()
     for line in f:
@@ -25,6 +25,18 @@ def readNodeWeights():
         node_weights[int(x[0])] = int(x[1])
     return node_weights
 
+def generating_node_weights(t_nodes):
+    node_weights = dict()
+    max_value_t_nodes = max(t_nodes)
+    for i in range(1, len(t_nodes) + 1):
+        node_weights[i] = random.randint(1, max_value_t_nodes + 10)
+
+    s = ""
+    for k, v in node_weights.items():
+        s += str(k) + " " + str(v) + "\n"
+    f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"], "w+")
+    f.write(s)
+    f.close()
 
 def get_color_codes(solution, attack, t_nodes, G):
     color = ["0" for i in range(len(t_nodes))]
@@ -37,7 +49,7 @@ def get_color_codes(solution, attack, t_nodes, G):
 
 
 def check_uniqueness(color):
-    node_weights = readNodeWeights()
+    node_weights = read_node_weights()
     total_sum = sum(node_weights.values())
 
     r_D = 0
@@ -125,7 +137,7 @@ def model():
     for solution in min_solutions:
         for node in solution:
             attacks.add(node)
-
+    generating_node_weights(dcs.t_nodes)
     generate_game_matrix(min_solutions, list(attacks), dcs.t_nodes, G, write_file)
 
 
