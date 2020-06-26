@@ -137,6 +137,9 @@ def model():
     for solution in min_solutions:
         for node in solution:
             attacks.add(node)
+            
+    print("Number of Defender's Strategies: {}".format(len(min_solutions)))
+    print("Number of Attacker's Strategies: {}".format(len(attacks)))
     generating_node_weights(dcs.t_nodes)
     generate_game_matrix(min_solutions, list(attacks), dcs.t_nodes, G, write_file)
 
