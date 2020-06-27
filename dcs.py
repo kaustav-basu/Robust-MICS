@@ -67,6 +67,8 @@ class DCS:
 
         m.setObjective(optimal_solution_size, GRB.MINIMIZE)
         m.optimize()
+        if m.status != 2:
+            return None
 
         solution_dict = {}
         for v in m.getVars():
@@ -125,16 +127,16 @@ class DCS:
             if LpStatus[problem.status] == "Optimal":
                 for v in problem.variables():
                     if v.varValue == 1:
-                        # print(v.name, "=", v.varValue)
                         new_solution.append(int(v.name.split("_")[1]))
-                solutions.append(new_solution)
             else:
                 all_opt_solutions_found = True
-                # Break early if the solution set size becomes greater than the optimal value
-                if len(new_solution) <= optimal_solution_size:
-                    optimal_solution_size = len(new_solution)
-                else:
-                    break
+
+            # Break early if the solution set size becomes greater than the optimal value
+            if len(new_solution) <= optimal_solution_size:
+                optimal_solution_size = len(new_solution)
+            else:
+                break
+            solutions.append(new_solution)
 
         if verbose:
             print("Solutions: ", solutions)

@@ -5,6 +5,7 @@ from dcs import DCS
 from nash import Nash
 from pulp import *
 import random
+import time
 
 config = configparser.ConfigParser()
 config.read("graph_config.ini")
@@ -123,8 +124,27 @@ def model():
     G = gen_graph(edge_file)
 
     dcs = DCS(num_nodes, num_transformers, G)
-    # solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
-    solutions = dcs.get_k_di_mdcs_iterative(verbose=False)
+
+    solutions = []
+
+    start = time.time()
+    i = 1
+    while i < num_nodes - num_transformers:
+        new_solutions = dcs.get_k_di_mdcs(K=i, verbose=False)
+        if new_solutions is None:
+            if i % 2 == 1:
+                break
+            else:
+                i -= 3
+        solutions = new_solutions
+        i += 2
+    one_shot_end = time.time()
+    solutions_iterative = dcs.get_k_di_mdcs_iterative(verbose=False)
+    iterative_end = time.time()
+
+    print(one_shot_end - start, iterative_end - one_shot_end)
+    print(len(solutions), len(solutions_iterative))
+    print([len(i) for i in solutions], [len(i) for i in solutions_iterative])
 
     # All possible nodes where sensors can be deployed can be attacked.
     attacks = set()
