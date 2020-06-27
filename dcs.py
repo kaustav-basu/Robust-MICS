@@ -1,6 +1,7 @@
 from itertools import combinations
 from gurobipy import *
 from pulp import *
+import math
 
 
 class DCS:
@@ -109,8 +110,9 @@ class DCS:
 
         print("Solving ...")
         solutions = []
-        all_solutions_found = False
-        while not all_solutions_found:
+        optimal_solution_size = math.inf
+        all_opt_solutions_found = False
+        while not all_opt_solutions_found:
             # Add constraints to ensure MICS nodes found should not be used in the new solution.
             # This guarantees solutions with differential immunity = 1.
             # TODO: Consider relaxing for solutions with 0 < differential immunity < 1
@@ -127,8 +129,12 @@ class DCS:
                         new_solution.append(int(v.name.split("_")[1]))
                 solutions.append(new_solution)
             else:
-                print("No More Optimal Solutions with Differential Immunity = 1.")
-                all_solutions_found = True
+                all_opt_solutions_found = True
+                # Break early if the solution set size becomes greater than the optimal value
+                if len(new_solution) <= optimal_solution_size:
+                    optimal_solution_size = len(new_solution)
+                else:
+                    break
 
         if verbose:
             print("Solutions: ", solutions)

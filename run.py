@@ -123,29 +123,19 @@ def model():
     G = gen_graph(edge_file)
 
     dcs = DCS(num_nodes, num_transformers, G)
-    solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
-
-    min_length = 999999
-    for solution in solutions:
-        if len(solution) < min_length:
-            min_length = len(solution)
-
-    min_solutions = []
-
-    for solution in solutions:
-        if len(solution) == min_length:
-            min_solutions.append(solution)
+    # solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
+    solutions = dcs.get_k_di_mdcs_iterative(verbose=False)
 
     # All possible nodes where sensors can be deployed can be attacked.
     attacks = set()
-    for solution in min_solutions:
+    for solution in solutions:
         for node in solution:
             attacks.add(node)
 
-    print("Number of Defender's Strategies: {}".format(len(min_solutions)))
+    print("Number of Defender's Strategies: {}".format(len(solutions)))
     print("Number of Attacker's Strategies: {}".format(len(attacks)))
     generating_node_weights(dcs.t_nodes)
-    generate_game_matrix(min_solutions, list(attacks), dcs.t_nodes, G, write_file)
+    generate_game_matrix(solutions, list(attacks), dcs.t_nodes, G, write_file)
 
 
 if __name__ == "__main__":
