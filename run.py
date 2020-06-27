@@ -2,6 +2,7 @@ from itertools import combinations
 import networkx as nx
 import configparser
 from dcs import DCS
+from nash import Nash
 from pulp import *
 import random
 
@@ -25,6 +26,7 @@ def read_node_weights():
         node_weights[int(x[0])] = int(x[1])
     return node_weights
 
+
 def generating_node_weights(t_nodes):
     node_weights = dict()
     max_value_t_nodes = max(t_nodes)
@@ -37,6 +39,7 @@ def generating_node_weights(t_nodes):
     f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"], "w+")
     f.write(s)
     f.close()
+
 
 def get_color_codes(solution, attack, t_nodes, G):
     color = ["0" for i in range(len(t_nodes))]
@@ -107,7 +110,8 @@ def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
 
     with open(write_file, "w") as f:
         f.write(s)
-    f.close()
+
+    return game_matrix
 
 
 def model():
@@ -119,7 +123,7 @@ def model():
     G = gen_graph(edge_file)
 
     dcs = DCS(num_nodes, num_transformers, G)
-    solutions = dcs.get_differentially_immune_solutions(verbose=False)
+    solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
 
     min_length = 999999
     for solution in solutions:
@@ -137,7 +141,7 @@ def model():
     for solution in min_solutions:
         for node in solution:
             attacks.add(node)
-            
+
     print("Number of Defender's Strategies: {}".format(len(min_solutions)))
     print("Number of Attacker's Strategies: {}".format(len(attacks)))
     generating_node_weights(dcs.t_nodes)

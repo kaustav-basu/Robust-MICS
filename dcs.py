@@ -1,4 +1,5 @@
 from itertools import combinations
+from gurobipy import *
 from pulp import *
 
 
@@ -9,7 +10,77 @@ class DCS:
         self.all_nodes = self.nodes + self.t_nodes
         self.graph = graph
 
-    def get_differentially_immune_solutions(self, verbose=True):
+    def get_k_di_mdcs(self, K, verbose=False):
+        m = Model("MIQP")
+
+        x = {}
+        for i in self.all_nodes:
+            for k in range(K):
+                s = 'x_{}_{}'.format(i, k)
+                x[s] = m.addVar(lb=0, ub=1, vtype=GRB.INTEGER, name=s)
+        m.update()
+
+        optimal_solution_size = m.addVar(
+            lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="opt_size"
+        )
+        m.update()
+
+        for k in range(K):
+            # Constraints to ensure that solution set sized for all graphs add up to the optimal solution size.
+            solution_size = LinExpr()
+            for i in self.nodes:
+                s = 'x_{}_{}'.format(i, k)
+                solution_size.add(x[s])
+            m.addConstr(solution_size - optimal_solution_size == 0)
+
+        for k in range(K):
+            for i in self.t_nodes:
+                # add has color constraints for node (i,k)
+                has_color_constraint = LinExpr()
+                for j in list(self.graph.neighbors(i)):
+                    s = 'x_{}_{}'.format(j, k)
+                    has_color_constraint.add(x[s])
+                m.addConstr(has_color_constraint >= 1)
+
+        for k in range(K):
+            for n1, n2 in combinations(self.t_nodes, 2):
+                # Add symmetric difference constraints for (n1, k) and (n2, k)
+                has_unique_color = LinExpr()
+                N_n1 = set(self.graph.neighbors(n1))
+                N_n2 = set(self.graph.neighbors(n2))
+                for node in N_n1.symmetric_difference(N_n2):
+                    s = 'x_{}_{}'.format(node, k)
+                    has_unique_color.add(x[s])
+                m.addConstr(has_unique_color >= 1)
+
+        for k1 in range(K):
+            for k2 in range(k1 + 1, K):
+                # Add constrains to ensure the solution for k1 and k2 have no common nodes
+                diff_immune_solutions = QuadExpr()
+                for i in self.nodes:
+                    diff_immune_solutions.add(
+                        (x['x_{}_{}'.format(i, k1)] - x['x_{}_{}'.format(i, k2)]) *
+                        (x['x_{}_{}'.format(i, k1)] - x['x_{}_{}'.format(i, k2)])
+                    )
+                m.addConstr(diff_immune_solutions == 2 * optimal_solution_size)
+
+        m.setObjective(optimal_solution_size, GRB.MINIMIZE)
+        m.optimize()
+
+        solution_dict = {}
+        for v in m.getVars():
+            if v.x == 1:
+                print("%s -> %g" % (v.varName, v.x))
+                name, node, k = v.varName.split("_")
+                try:
+                    solution_dict[k].append(int(node))
+                except KeyError:
+                    solution_dict[k] = [int(node)]
+
+        print("Obj -> %g" % m.objVal)
+        return solution_dict.values()
+
+    def get_k_di_mdcs_iterative(self, verbose=True):
         print("Initializing Integer Linear Program ...")
         problem = LpProblem("IdentifyingCodes1", LpMinimize)
 
