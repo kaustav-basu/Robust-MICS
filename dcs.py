@@ -130,6 +130,7 @@ class DCS:
                         new_solution.append(int(v.name.split("_")[1]))
             else:
                 all_opt_solutions_found = True
+                continue
 
             # Break early if the solution set size becomes greater than the optimal value
             if len(new_solution) <= optimal_solution_size:

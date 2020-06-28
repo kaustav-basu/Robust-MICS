@@ -132,12 +132,9 @@ def model():
     while i < num_nodes - num_transformers:
         new_solutions = dcs.get_k_di_mdcs(K=i, verbose=False)
         if new_solutions is None:
-            if i % 2 == 1:
-                break
-            else:
-                i -= 3
+            break
         solutions = new_solutions
-        i += 2
+        i += 1
     one_shot_end = time.time()
     solutions_iterative = dcs.get_k_di_mdcs_iterative(verbose=False)
     iterative_end = time.time()
