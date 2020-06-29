@@ -126,18 +126,25 @@ def model():
     dcs = DCS(num_nodes, num_transformers, G)
 
     solutions = []
-
     start = time.time()
     i = 1
-    new_solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
-    print([len(i) for i in new_solutions])
-    exit(0)
     while i < num_nodes - num_transformers:
-        new_solutions = dcs.get_k_di_mdcs(K=i, verbose=False)
+        try:
+            new_solutions = list(dcs.get_k_di_mdcs(K=i, verbose=False))
+        except TypeError:
+            new_solutions = None
+
+        # The ILP is infeasible and thus no solutions were returned.
         if new_solutions is None:
             break
+
+        # The ILP was feasible but did not return a Minimum DCS.
+        if solutions != [] and len(solutions[0]) < len(new_solutions[0]):
+            break
+
         solutions = new_solutions
         i += 1
+
     one_shot_end = time.time()
     solutions_iterative = dcs.get_k_di_mdcs_iterative(verbose=False)
     iterative_end = time.time()
