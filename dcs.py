@@ -13,6 +13,7 @@ class DCS:
 
     def get_k_di_mdcs(self, K, verbose=False):
         m = Model("MIQP")
+        m.setParam("OutputFlag", 0)
 
         x = {}
         for i in self.all_nodes:
@@ -73,7 +74,7 @@ class DCS:
         solution_dict = {}
         for v in m.getVars():
             if v.x == 1:
-                print("%s -> %g" % (v.varName, v.x))
+                #print("%s -> %g" % (v.varName, v.x))
                 name, node, k = v.varName.split("_")
                 try:
                     solution_dict[k].append(int(node))
@@ -123,7 +124,7 @@ class DCS:
                     problem += x[i] == 0, ""
 
             new_solution = []
-            problem.solve(GUROBI())
+            problem.solve(GUROBI(msg=0))
             if LpStatus[problem.status] == "Optimal":
                 for v in problem.variables():
                     if v.varValue == 1:

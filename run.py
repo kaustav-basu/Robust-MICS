@@ -2,15 +2,17 @@ from itertools import combinations
 import networkx as nx
 import configparser
 from dcs import DCS
-from nash import Nash
 from pulp import *
 import random
 import time
+import statistics
 
 config = configparser.ConfigParser()
 config.read("graph_config.ini")
-seed = int(config["GRAPH"]["SEED"])
-random.seed(seed)
+#seed = int(config["GRAPH"]["SEED"])
+#random.seed(seed)
+att_opt = dict()
+att_iter = dict()
 
 
 def gen_graph(edge_file):
@@ -19,8 +21,8 @@ def gen_graph(edge_file):
     return G
 
 
-def read_node_weights():
-    f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"])
+def read_node_weights(graph):
+    f = open(config["GRAPH_{}".format(graph)]["NODE_WEIGHTS_FILE"])
     node_weights = dict()
     for line in f:
         x = line.replace("\n", "").split(" ")
@@ -28,18 +30,31 @@ def read_node_weights():
     return node_weights
 
 
-def generating_node_weights(t_nodes):
+def generating_node_weights(graph, t_nodes, attacks_optimal, attacks_iterative):
     node_weights = dict()
-    max_value_t_nodes = max(t_nodes)
+    #max_value_t_nodes = max(t_nodes)
     for i in range(1, len(t_nodes) + 1):
-        node_weights[i] = random.randint(1, max_value_t_nodes + 10)
+        node_weights[i] = random.randint(1, 10)
 
     s = ""
     for k, v in node_weights.items():
         s += str(k) + " " + str(v) + "\n"
-    f = open(config["GRAPH"]["NODE_WEIGHTS_FILE"], "w+")
+    f = open(config["GRAPH_{}".format(graph)]["NODE_WEIGHTS_FILE"], "w+")
     f.write(s)
     f.close()
+    
+    common_list = list(attacks_optimal.intersection(attacks_iterative))
+    
+    for common in common_list:
+        val = random.randint(1, 10)
+        att_opt[common] = val
+        att_iter[common] = val
+    
+    for att in list(attacks_optimal.difference(attacks_iterative)):
+        att_opt[att] = random.randint(1, 10)
+    
+    for att in list(attacks_iterative.difference(attacks_optimal)):
+        att_iter[att] = random.randint(1, 10)
 
 
 def get_color_codes(solution, attack, t_nodes, G):
@@ -52,8 +67,8 @@ def get_color_codes(solution, attack, t_nodes, G):
     return color
 
 
-def check_uniqueness(color):
-    node_weights = read_node_weights()
+def check_uniqueness(graph, color):
+    node_weights = read_node_weights(graph)
     total_sum = sum(node_weights.values())
 
     r_D = 0
@@ -75,19 +90,19 @@ def check_uniqueness(color):
     return total_sum, r_D
 
 
-def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
+def generate_game_matrix_optimal(graph, def_actions, attacks, t_nodes, G, write_file_opt):
     game_matrix = dict()
 
     index = 1
     for a_D in def_actions:
         for a_A in attacks:
-            color_codes = get_color_codes(a_D, a_A, t_nodes, graph)
-            total_sum, r_D = check_uniqueness(color_codes)
+            color_codes = get_color_codes(a_D, a_A, t_nodes, G)
+            total_sum, r_D = check_uniqueness(graph, color_codes)
             game_matrix["{}_{}".format(index, a_A)] = (r_D, total_sum - r_D)
         index += 1
 
     for a_A in attacks:
-        r_A = random.randint(0, total_sum)
+        r_A = att_opt[a_A]
         for key in game_matrix.keys():
             if str(a_A) in key:
                 val = game_matrix[key]
@@ -109,17 +124,58 @@ def generate_game_matrix(def_actions, attacks, t_nodes, graph, write_file):
         if count % len(attacks) == 0:
             s += "\n"
 
-    with open(write_file, "w") as f:
+    with open(write_file_opt, "w") as f:
+        f.write(s)
+
+    #return game_matrix
+
+    
+def generate_game_matrix_iterative(graph, def_actions, attacks, t_nodes, G, write_file_it):
+    game_matrix = dict()
+
+    index = 1
+    for a_D in def_actions:
+        for a_A in attacks:
+            color_codes = get_color_codes(a_D, a_A, t_nodes, G)
+            total_sum, r_D = check_uniqueness(graph, color_codes)
+            game_matrix["{}_{}".format(index, a_A)] = (r_D, total_sum - r_D)
+        index += 1
+
+    for a_A in attacks:
+        r_A = att_iter[a_A]
+        for key in game_matrix.keys():
+            if str(a_A) in key:
+                val = game_matrix[key]
+                game_matrix[key] = (val[0], val[1] - r_A)
+
+    s = ""
+    s += str(len(def_actions)) + "\n"
+    s += str(1) + "\n"
+    s += str(1) + "\n"
+    s += str(len(attacks)) + "\n"
+
+    attackString = [str(a) for a in attacks]
+    s += "|".join(attackString) + "\n"
+
+    count = 0
+    for k, v in game_matrix.items():
+        s += "{},{} ".format(v[0], v[1])
+        count += 1
+        if count % len(attacks) == 0:
+            s += "\n"
+
+    with open(write_file_it, "w") as f:
         f.write(s)
 
     return game_matrix
 
 
-def model():
-    num_nodes = int(config["GRAPH"]["NUM_NODES"])
-    num_transformers = int(config["GRAPH"]["NUM_TRANSFORMER_NODES"])
-    edge_file = config["GRAPH"]["EDGE_FILE"]
-    write_file = config["GRAPH"]["WRITE_FILE"]
+def model(graph):
+    num_nodes = int(config["GRAPH_{}".format(graph)]["NUM_NODES"])
+    num_transformers = int(config["GRAPH_{}".format(graph)]["NUM_TRANSFORMER_NODES"])
+    edge_file = config["GRAPH_{}".format(graph)]["EDGE_FILE"]
+    write_file_opt = config["GRAPH_{}".format(graph)]["WRITE_FILE_OPT"]
+    write_file_it = config["GRAPH_{}".format(graph)]["WRITE_FILE_IT"]
 
     G = gen_graph(edge_file)
 
@@ -149,22 +205,57 @@ def model():
     solutions_iterative = dcs.get_k_di_mdcs_iterative(verbose=False)
     iterative_end = time.time()
 
-    print(one_shot_end - start, iterative_end - one_shot_end)
-    print(len(solutions), len(solutions_iterative))
-    print([len(i) for i in solutions], [len(i) for i in solutions_iterative])
+    #print(one_shot_end - start, iterative_end - one_shot_end)
+    #print([len(i) for i in solutions], [len(i) for i in solutions_iterative])
 
-    print(solutions)
+    #print(solutions)
+    #print(solutions_iterative)
     # All possible nodes where sensors can be deployed can be attacked.
-    attacks = set()
+    attacks_optimal = set()
     for solution in solutions:
         for node in solution:
-            attacks.add(node)
+            attacks_optimal.add(node)
+    
+    attacks_iterative = set()
+    for solution in solutions_iterative:
+        for node in solution:
+            attacks_iterative.add(node)
 
-    print("Number of Defender's Strategies: {}".format(len(solutions)))
-    print("Number of Attacker's Strategies: {}".format(len(attacks)))
-    generating_node_weights(dcs.t_nodes)
-    generate_game_matrix(solutions, list(attacks), dcs.t_nodes, G, write_file)
+    #print("Number of Defender's Optimal Strategies: {}".format(len(solutions)))
+    #print("Number of Defender's Iterative Strategies: {}".format(len(solutions_iterative)))
+    #print("Number of Attacker's Optimal Strategies: {}".format(len(attacks_optimal)))
+    #print("Number of Attacker's Iterative Strategies: {}".format(len(attacks_iterative)))
+    
+    generating_node_weights(graph, dcs.t_nodes, attacks_optimal, attacks_iterative)
+    generate_game_matrix_optimal(graph, solutions, list(attacks_optimal), dcs.t_nodes, G, write_file_opt)
+    generate_game_matrix_iterative(graph, solutions_iterative, list(attacks_iterative), dcs.t_nodes, G, write_file_it)
+    return one_shot_end - start, iterative_end - one_shot_end
+
+    
+def main():
+    num_graphs = int(sys.argv[1])
+    for graph in range(1, num_graphs + 1):
+        seeds = [42 * i for i in range(1, 11)]
+        total_time_optimal = []
+        total_time_iterative = []
+        for seed in seeds:
+            print("Seed = {}".format(seed))
+            random.seed(seed)
+            opt_time, iter_time = model(graph)
+            total_time_optimal.append(opt_time)
+            total_time_iterative.append(iter_time)
+
+        print("Optimal Total Run Time = {}s".format(statistics.mean(total_time_optimal)))
+        print("Iterative Total Run Time = {}s".format(statistics.mean(total_time_iterative)))
+        print("Optimal Time Standard Deviation = {}s".format(statistics.pstdev(total_time_optimal)))
+        print("Iterative Time Standard Deviation = {}s".format(statistics.pstdev(total_time_iterative)))
+        results = ""
+        results += str(statistics.mean(total_time_optimal)) + ", " + str(statistics.mean(total_time_iterative)) + "\n"
+        results += str(statistics.pstdev(total_time_optimal)) + ", " + str(statistics.pstdev(total_time_iterative)) + "\n"
+
+        with open(config["GRAPH_{}".format(graph)]["WRITE_RESULTS"], "w+") as f:
+            f.write(results)
 
 
 if __name__ == "__main__":
-    model()
+    main()
