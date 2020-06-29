@@ -129,6 +129,9 @@ def model():
 
     start = time.time()
     i = 1
+    new_solutions = dcs.get_k_di_mdcs(K=4, verbose=False)
+    print([len(i) for i in new_solutions])
+    exit(0)
     while i < num_nodes - num_transformers:
         new_solutions = dcs.get_k_di_mdcs(K=i, verbose=False)
         if new_solutions is None:
@@ -143,6 +146,7 @@ def model():
     print(len(solutions), len(solutions_iterative))
     print([len(i) for i in solutions], [len(i) for i in solutions_iterative])
 
+    print(solutions)
     # All possible nodes where sensors can be deployed can be attacked.
     attacks = set()
     for solution in solutions:
