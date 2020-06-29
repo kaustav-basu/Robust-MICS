@@ -90,7 +90,7 @@ def check_uniqueness(graph, color):
     return total_sum, r_D
 
 
-def generate_game_matrix_optimal(graph, def_actions, attacks, t_nodes, G, write_file_opt):
+def generate_game_matrix_optimal(seed, graph, def_actions, attacks, t_nodes, G, write_file_opt):
     game_matrix = dict()
 
     index = 1
@@ -124,13 +124,13 @@ def generate_game_matrix_optimal(graph, def_actions, attacks, t_nodes, G, write_
         if count % len(attacks) == 0:
             s += "\n"
 
-    with open(write_file_opt, "w") as f:
+    with open("GameMatrix/" + str(seed) + "_" + write_file_opt, "w+") as f:
         f.write(s)
 
     #return game_matrix
 
     
-def generate_game_matrix_iterative(graph, def_actions, attacks, t_nodes, G, write_file_it):
+def generate_game_matrix_iterative(seed, graph, def_actions, attacks, t_nodes, G, write_file_it):
     game_matrix = dict()
 
     index = 1
@@ -164,13 +164,13 @@ def generate_game_matrix_iterative(graph, def_actions, attacks, t_nodes, G, writ
         if count % len(attacks) == 0:
             s += "\n"
 
-    with open(write_file_it, "w") as f:
+    with open("GameMatrix/" + str(seed) + "_" + write_file_it, "w+") as f:
         f.write(s)
 
     return game_matrix
 
 
-def model(graph):
+def model(graph, seed):
     num_nodes = int(config["GRAPH_{}".format(graph)]["NUM_NODES"])
     num_transformers = int(config["GRAPH_{}".format(graph)]["NUM_TRANSFORMER_NODES"])
     edge_file = config["GRAPH_{}".format(graph)]["EDGE_FILE"]
@@ -227,8 +227,8 @@ def model(graph):
     #print("Number of Attacker's Iterative Strategies: {}".format(len(attacks_iterative)))
     
     generating_node_weights(graph, dcs.t_nodes, attacks_optimal, attacks_iterative)
-    generate_game_matrix_optimal(graph, solutions, list(attacks_optimal), dcs.t_nodes, G, write_file_opt)
-    generate_game_matrix_iterative(graph, solutions_iterative, list(attacks_iterative), dcs.t_nodes, G, write_file_it)
+    generate_game_matrix_optimal(seed, graph, solutions, list(attacks_optimal), dcs.t_nodes, G, write_file_opt)
+    generate_game_matrix_iterative(seed, graph, solutions_iterative, list(attacks_iterative), dcs.t_nodes, G, write_file_it)
     return one_shot_end - start, iterative_end - one_shot_end
 
     
@@ -241,7 +241,7 @@ def main():
         for seed in seeds:
             print("Seed = {}".format(seed))
             random.seed(seed)
-            opt_time, iter_time = model(graph)
+            opt_time, iter_time = model(graph, seed)
             total_time_optimal.append(opt_time)
             total_time_iterative.append(iter_time)
 
