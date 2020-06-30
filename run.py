@@ -124,7 +124,11 @@ def generate_game_matrix_optimal(seed, graph, def_actions, attacks, t_nodes, G, 
         if count % len(attacks) == 0:
             s += "\n"
 
-    with open("GameMatrix/" + str(seed) + "_" + write_file_opt, "w+") as f:
+    directory = "./GameMatrix/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(directory + str(seed) + "_" + write_file_opt, "w+") as f:
         f.write(s)
 
     #return game_matrix
@@ -164,7 +168,11 @@ def generate_game_matrix_iterative(seed, graph, def_actions, attacks, t_nodes, G
         if count % len(attacks) == 0:
             s += "\n"
 
-    with open("GameMatrix/" + str(seed) + "_" + write_file_it, "w+") as f:
+    directory = "./GameMatrix/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    with open(directory + str(seed) + "_" + write_file_it, "w+") as f:
         f.write(s)
 
     return game_matrix
